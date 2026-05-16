@@ -10,8 +10,8 @@ import { z } from "zod";
  * Zod los coerce a number.
  */
 export const MaterialEstimadoSchema = z.object({
-  producto: z.string().min(1, "El nombre del producto no puede estar vacío"),
-  precio: z.coerce.number().positive("El precio debe ser positivo"),
+	producto: z.string().min(1, "El nombre del producto no puede estar vacío"),
+	precio: z.coerce.number().positive("El precio debe ser positivo"),
 });
 
 /**
@@ -19,8 +19,8 @@ export const MaterialEstimadoSchema = z.object({
  * Mismo tratamiento de coerción para monto.
  */
 export const GastoAdicionalSchema = z.object({
-  concepto: z.string().min(1, "El concepto no puede estar vacío"),
-  monto: z.coerce.number().positive("El monto debe ser positivo"),
+	concepto: z.string().min(1, "El concepto no puede estar vacío"),
+	monto: z.coerce.number().positive("El monto debe ser positivo"),
 });
 
 /**
@@ -30,17 +30,17 @@ export const GastoAdicionalSchema = z.object({
  * Los arrays nullable se manejan explícitamente.
  */
 export const ExtractedDataSchema = z.object({
-  clienteNombreCompleto: z.string().nullable().optional(),
-  clienteContacto: z.string().nullable().optional(),
-  descripcionTrabajo: z.string().nullable().optional(),
-  duracionEstimada: z.string().nullable().optional(),
-  materialEstimado: z.array(MaterialEstimadoSchema).nullable().optional(),
-  valorManoObra: z.coerce.number().nullable().optional(),
-  gastosAdicionales: z.array(GastoAdicionalSchema).nullable().optional(),
-  fechaVencimiento: z.string().nullable().optional(),
-  estadoFlujo: z
-    .enum(["RECOPILANDO_DATOS", "LISTO_PARA_CONFIRMAR", "CONFIRMADO"])
-    .optional(),
+	clienteNombreCompleto: z.string().nullable().optional(),
+	clienteContacto: z.string().nullable().optional(),
+	descripcionTrabajo: z.string().nullable().optional(),
+	duracionEstimada: z.string().nullable().optional(),
+	materialEstimado: z.array(MaterialEstimadoSchema).nullable().optional(),
+	valorManoObra: z.coerce.number().nullable().optional(),
+	gastosAdicionales: z.array(GastoAdicionalSchema).nullable().optional(),
+	fechaVencimiento: z.string().nullable().optional(),
+	estadoFlujo: z
+		.enum(["RECOPILANDO_DATOS", "LISTO_PARA_CONFIRMAR", "CONFIRMADO"])
+		.optional(),
 });
 
 /**
@@ -48,8 +48,8 @@ export const ExtractedDataSchema = z.object({
  * Esto es lo que оба providers deben cumplir.
  */
 export const LLMResponseSchema = z.object({
-  message: z.string().min(1, "El mensaje no puede estar vacío"),
-  extractedData: ExtractedDataSchema,
+	message: z.string().min(1, "El mensaje no puede estar vacío"),
+	extractedData: ExtractedDataSchema,
 });
 
 // ============================================
@@ -66,9 +66,9 @@ export type LLMResponse = z.infer<typeof LLMResponseSchema>;
 // ============================================
 
 export type EstadoFlujo =
-  | "RECOPILANDO_DATOS"
-  | "LISTO_PARA_CONFIRMAR"
-  | "CONFIRMADO";
+	| "RECOPILANDO_DATOS"
+	| "LISTO_PARA_CONFIRMAR"
+	| "CONFIRMADO";
 
 // ============================================
 // Interfaz principal del estado del comprobante
@@ -77,25 +77,25 @@ export type EstadoFlujo =
 // ============================================
 
 export interface ComprobanteState {
-  // Datos del Cliente
-  clienteNombreCompleto: string | null;
-  clienteContacto: string | null;
+	// Datos del Cliente
+	clienteNombreCompleto: string | null;
+	clienteContacto: string | null;
 
-  // Detalles del Trabajo
-  descripcionTrabajo: string | null;
-  duracionEstimada: string | null;
+	// Detalles del Trabajo
+	descripcionTrabajo: string | null;
+	duracionEstimada: string | null;
 
-  // Desglose Económico
-  materialEstimado: MaterialEstimado[] | null;
-  valorManoObra: number | null;
-  gastosAdicionales: GastoAdicional[] | null;
+	// Desglose Económico
+	materialEstimado: MaterialEstimado[] | null;
+	valorManoObra: number | null;
+	gastosAdicionales: GastoAdicional[] | null;
 
-  // Fechas (en formato ISO 8601)
-  fechaCreacion: string;
-  fechaVencimiento: string | null;
+	// Fechas (en formato ISO 8601)
+	fechaCreacion: string;
+	fechaVencimiento: string | null;
 
-  // Control de flujo del bot
-  estadoFlujo: EstadoFlujo;
+	// Control de flujo del bot
+	estadoFlujo: EstadoFlujo;
 }
 
 // ============================================
@@ -103,17 +103,17 @@ export interface ComprobanteState {
 // ============================================
 
 export interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
+	role: "user" | "assistant";
+	content: string;
 }
 
 export interface SessionData {
-  historialChat: ChatMessage[];
-  comprobanteActual: ComprobanteState;
+	historialChat: ChatMessage[];
+	comprobanteActual: ComprobanteState;
 }
 
 // ============================================
 // Tipos para el adapter pattern del LLM
 // ============================================
 
-export type LLMProviderName = "gemini" | "openai";
+export type LLMProviderName = "gemini" | "openai" | "nvidia";

@@ -2,3 +2,9 @@ node_modules/
 dist/
 .env
 *.js.map
+
+# Gentle AI tooling
+.atl/
+.pi/
+.pi-lens/
+openspec/
