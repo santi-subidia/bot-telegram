@@ -4,11 +4,12 @@ import {
 	type Context,
 	GrammyError,
 	HttpError,
+	InputFile,
 	session,
 	type SessionFlavor,
 } from "grammy";
 import type { SessionData, LLMProviderName } from "./types";
-import { AIService, createLLMProvider } from "./services";
+import { AIService, createLLMProvider, crearComprobante, descargarPdf } from "./services";
 import { generarResumen } from "./services/validation.service";
 import { generarFechaCreacion } from "./utils";
 
@@ -124,6 +125,12 @@ bot.command("resumen", async (ctx) => {
 });
 
 // ============================================
+// Constantes de confirmación
+// ============================================
+
+const PATRONES_CONFIRMACION = /^(sí|si|confirmar|confirmo|está bien|dale|va|ok|yes)$/i;
+
+// ============================================
 // Manejo de mensajes de texto — Flujo principal
 // ============================================
 
@@ -137,6 +144,34 @@ bot.on("message:text", async (ctx) => {
 			"✅ Este presupuesto ya fue confirmado. Usá /reset para empezar uno nuevo.",
 		);
 		return;
+	}
+
+	// Si está LISTO_PARA_CONFIRMAR y el usuario confirma, crear comprobante
+	if (sessionData.comprobanteActual.estadoFlujo === "LISTO_PARA_CONFIRMAR") {
+		if (PATRONES_CONFIRMACION.test(userMessage.trim())) {
+			await ctx.replyWithChatAction("typing");
+			try {
+				const comprobante = sessionData.comprobanteActual;
+				const { id, pdfUrl } = await crearComprobante(comprobante);
+				const pdfBuffer = await descargarPdf(id);
+
+				await ctx.reply("✅ Presupuesto confirmado. Generando PDF...");
+
+				await ctx.replyWithDocument(
+					new InputFile(pdfBuffer, `comprobante-${id.slice(0, 8)}.pdf`),
+				);
+
+				// Marcar como confirmado
+				ctx.session.comprobanteActual.estadoFlujo = "CONFIRMADO";
+				return;
+			} catch (error) {
+				console.error("[Bot] Error al crear comprobante:", error);
+				await ctx.reply(
+					"❌ Hubo un error al guardar el presupuesto. Intentá de nuevo.",
+				);
+				return;
+			}
+		}
 	}
 
 	// Mostrar indicador de "escribiendo..." mientras se procesa
@@ -177,16 +212,66 @@ bot.catch((err) => {
 });
 
 // ============================================
-// Iniciar bot
+// Graceful shutdown
+// ============================================
+
+let cerrando = false;
+
+async function shutdown() {
+	if (cerrando) return;
+	cerrando = true;
+	console.log("\n[Bot] Cerrando...");
+	await bot.stop();
+	process.exit(0);
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+
+// ============================================
+// Iniciar bot con retry
 // ============================================
 
 async function main() {
 	console.log("[Bot] Iniciando bot de Telegram...");
-	await bot.start({
-		onStart: (info) => {
-			console.log(`[Bot] Conectado como @${info.username}`);
-		},
-	});
+
+	let intentos = 0;
+	const maxIntentos = 10;
+	const delayBase = 1000;
+
+	while (intentos < maxIntentos) {
+		if (cerrando) return; // Ya se está cerrando
+		intentos++;
+		try {
+			console.log(`[Bot] Intentando conectar (${intentos}/${maxIntentos})...`);
+			const startTime = Date.now();
+			await bot.start({
+				onStart: (info) => {
+					const elapsed = Date.now() - startTime;
+					console.log(`[Bot] Conectado como @${info.username} (${elapsed}ms)`);
+				},
+			});
+			return; // Conexión exitosa, salir del loop
+		} catch (error) {
+			if (cerrando) return; // Ctrl+C mientras se conectaba
+			const err = error instanceof Error ? error : String(error);
+			console.error(`[Bot] Error: ${err}`);
+			// Mostrar stack trace si no es un error conocido
+			if (error instanceof Error && error.stack) {
+				console.error(error.stack.split("\n").slice(1, 4).join("\n"));
+			}
+			if (intentos < maxIntentos) {
+				const delay = delayBase * Math.pow(2, intentos - 1);
+				console.log(`[Bot] Reintentando en ${delay / 1000}s... (Ctrl+C para salir)`);
+				await new Promise((resolve) => setTimeout(resolve, delay));
+			}
+		}
+	}
+
+	if (!cerrando) {
+		console.error("[Bot] No se pudo conectar. Saliendo.");
+		process.exit(1);
+	}
 }
 
 main();
